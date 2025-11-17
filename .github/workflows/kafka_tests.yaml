@@ -1,6 +1,25 @@
-name: Reusable Kafka Tests
+name: Kafka Tests
 
 on:
+  workflow_dispatch:
+    inputs:
+      service_branch:
+        required: false
+        type: string
+      versions_file:
+        description: 'Path to versions list file'
+        type: string
+        required: true
+      pipeline_branch:
+        description: 'Test pipeline branch name'
+        type: string
+        required: true
+      runner_type:
+        description: 'Runner type (self-hosted or ubuntu-latest)'
+        type: string
+        required: false
+        default: 'ubuntu-latest'
+
   workflow_call:
     inputs:
       service_branch:
