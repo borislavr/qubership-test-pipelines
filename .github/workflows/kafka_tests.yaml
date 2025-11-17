@@ -3,6 +3,11 @@ name: Kafka Tests
 on:
   workflow_dispatch:
     inputs:
+      repository_name:
+        description: 'Kafka repository name'
+        required: false
+        type: string
+        default: 'Netcracker/qubership-kafka'
       service_branch:
         required: false
         type: string
@@ -22,6 +27,11 @@ on:
 
   workflow_call:
     inputs:
+      repository_name:
+        description: 'Kafka repository name'
+        required: false
+        type: string
+        default: 'Netcracker/qubership-kafka'
       service_branch:
         required: false
         type: string
@@ -46,38 +56,64 @@ on:
 
 jobs:
   prepare-versions:
-    runs-on: ${{inputs.runner_type}}
+    runs-on: ${{ inputs.runner_type }}
     outputs:
-      versions: ${{steps.process-versions.outputs.versions}}
-      previous_version: ${{steps.process-versions.outputs.previous_version}}
+      versions: ${{ steps.process-versions.outputs.versions }}
+      previous_version: ${{ steps.process-versions.outputs.previous_version }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          ref: '${{inputs.service_branch}}'
-          repository: 'Netcracker/qubership-kafka'
+          ref: '${{ inputs.service_branch }}'
+          repository: '${{ inputs.repository_name }}'
           path: 'qubership-kafka'
       - name: Process versions file
         id: process-versions
         # language=bash
         run: |
-          versions_str=$(cat qubership-kafka/${{inputs.versions_file}})
+          versions_str=$(cat qubership-kafka/${{ inputs.versions_file }})
           versions_json=$(echo $versions_str | jq -R -s -c 'split(" ")')
           echo "versions=$versions_json" >> $GITHUB_OUTPUT
           previous_version=$(echo "$versions_json" | jq -r '.[-1]')
           echo "previous_version=$previous_version" >> $GITHUB_OUTPUT
 
+
+  matrix-tests:
+    runs-on: ${{ inputs.runner_type }}
+    needs: prepare-versions
+    strategy:
+      matrix:
+        tests:
+          - name: Clean [${{ inputs.service_branch }}]. Update [${{ inputs.service_branch }}] Diff Params in Kraft mode
+            kafka_install_version: '${{ inputs.service_branch }}'
+            kafka_template: "templates/kafka-service/kafka_clean_kraft_mode.yml"
+            kafka_service_template: "templates/kafka-service/kafka_clean_kraft_mode.yml"
+            kafka_update_template: "templates/kafka-service/kafka_update_kraft_mode.yml"
+            kafka_service_update_template: "templates/kafka-service/kafka_update_kraft_mode.yml"
+            sequence: upgrade
+          - name: Clean-Latest-Zookeeper-non-TLS
+          - name: Clean-Latest-Zookeeper-TLS
+          - name: Clean-Latest-Zookeeper-both-TLS
+          - name: Clean-Latest-Zookeeper-S3
+    steps:
+      # == 01 Start ======= Common pre-steps for all tests =======
+      - name: Checkout pipeline
+        uses: actions/checkout@v4
+        with:
+          ref: '${{ inputs.pipeline_branch }}'
+          repository: '${{ github.repository_owner }}/qubership-test-pipelines'
+          
   # ---------- Current service branch ----------
   #V Clean [LATEST], Update [LATEST] Diff Params in Kraft mode
   Clean-Latest-Update-Diff-Params-Kraft:
-    runs-on: ${{inputs.runner_type}}
+    runs-on: ${{ inputs.runner_type }}
     name: Clean [LATEST], Update [LATEST] Diff Params in Kraft mode
     steps:
       - name: Checkout pipeline
         uses: actions/checkout@v4
         with:
-          ref: '${{inputs.pipeline_branch}}'
-          repository: 'Netcracker/qubership-test-pipelines'
+          ref: '${{ inputs.pipeline_branch }}'
+          repository: '${{ github.repository_owner }}/qubership-test-pipelines'
           path: 'qubership-test-pipelines'
       - name: Create cluster
         uses: ./qubership-test-pipelines/actions/shared/create_cluster
@@ -87,21 +123,21 @@ jobs:
         uses: ./qubership-test-pipelines/actions/kafka/helm_deploy_kafka
         with:
           path_to_template: 'templates/kafka-service/kafka_clean_kraft_mode.yml'
-          service_branch: '${{inputs.service_branch}}'
+          service_branch: '${{ inputs.service_branch }}'
       - name: Verify Kafka installation
         uses: ./qubership-test-pipelines/actions/kafka/verify_installation_kafka
       - name: Clean Install Kafka Service [LATEST]
         uses: ./qubership-test-pipelines/actions/kafka/helm_deploy_kafka_service
         with:
           path_to_template: 'templates/kafka-service/kafka_clean_kraft_mode.yml'
-          service_branch: '${{inputs.service_branch}}'
+          service_branch: '${{ inputs.service_branch }}'
       - name: Verify Kafka Service installation
         uses: ./qubership-test-pipelines/actions/kafka/verify_installation_kafka_service
       - name: Update Kafka to [LATEST] Version With Diff Params
         uses: ./qubership-test-pipelines/actions/kafka/helm_deploy_kafka
         with:
           path_to_template: 'templates/kafka-service/kafka_update_kraft_mode.yml'
-          service_branch: '${{inputs.service_branch}}'
+          service_branch: '${{ inputs.service_branch }}'
           deploy_mode: upgrade
       - name: Sleep 1m after update
         run: sleep 1m
@@ -111,7 +147,7 @@ jobs:
         uses: ./qubership-test-pipelines/actions/kafka/helm_deploy_kafka_service
         with:
           path_to_template: 'templates/kafka-service/kafka_update_kraft_mode.yml'
-          service_branch: '${{inputs.service_branch}}'
+          service_branch: '${{ inputs.service_branch }}'
           deploy_mode: upgrade
       - name: Sleep 1m after update
         run: sleep 1m
