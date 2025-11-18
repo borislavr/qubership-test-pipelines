@@ -88,13 +88,48 @@ jobs:
             kafka_install_version: '${{ inputs.service_branch }}'
             kafka_template: "templates/kafka-service/kafka_clean_kraft_mode.yml"
             kafka_service_template: "templates/kafka-service/kafka_clean_kraft_mode.yml"
-            kafka_update_template: "templates/kafka-service/kafka_update_kraft_mode.yml"
-            kafka_service_update_template: "templates/kafka-service/kafka_update_kraft_mode.yml"
+            kafka_upgrade_version: '${{ inputs.service_branch }}'
+            kafka_upgrade_template: "templates/kafka-service/kafka_upgrade_kraft_mode.yml"
+            kafka_service_upgrade_template: "templates/kafka-service/kafka_upgrade_kraft_mode.yml"
             sequence: upgrade
-          - name: Clean-Latest-Zookeeper-non-TLS
-          - name: Clean-Latest-Zookeeper-TLS
-          - name: Clean-Latest-Zookeeper-both-TLS
-          - name: Clean-Latest-Zookeeper-S3
+            zookeeper: false
+          - name: Clean [${{ inputs.service_branch }}] with Zookeeper in non-TLS
+            kafka_install_version: '${{ inputs.service_branch }}'
+            kafka_template: "templates/kafka-service/kafka_clean_sc_zoo.yml"
+            kafka_service_template: "templates/kafka-service/kafka_clean_sc_zoo.yml"
+            kafka_upgrade_version: '${{ inputs.service_branch }}'
+            kafka_upgrade_template: "templates/kafka-service/kafka_upgrade_sc_zoo.yml"
+            kafka_service_upgrade_template: "templates/kafka-service/kafka_upgrade_sc_zoo.yml"
+            sequence: install
+            zookeeper: true
+            zookeeper_template: "templates/zookeeper-service/zookeeper_install_APP_k8s.yml"
+          - name: Clean [${{ inputs.service_branch }}] with Zookeeper in TLS
+            kafka_install_version: '${{ inputs.service_branch }}'
+            kafka_template: "templates/kafka-service/kafka_clean_sc_zoo_tls.yml"
+            kafka_service_template: "templates/kafka-service/kafka_clean_sc_zoo_tls.yml"
+            kafka_upgrade_version: '${{ inputs.service_branch }}'
+            kafka_upgrade_template: "templates/kafka-service/kafka_upgrade_sc_zoo_tls.yml"
+            kafka_service_upgrade_template: "templates/kafka-service/kafka_upgrade_sc_zoo_tls.yml"
+            sequence: install
+            zookeeper: true
+            tls: true
+            zookeeper_template: "templates/zookeeper-service/zookeeper_install_tls_APP_k8s.yml"
+          - name: Clean [LATEST] with Zookeeper when both in TLS
+            kafka_install_version: '${{ inputs.service_branch }}'
+            kafka_template: "templates/kafka-service/kafka_clean_sc_zoo_tls.yml"
+            kafka_service_template: "templates/kafka-service/kafka_clean_sc_zoo_tls.yml"
+            sequence: install
+            zookeeper: true
+            tls: true
+            zookeeper_template: "templates/zookeeper-service/zookeeper_install_tls_APP_k8s.yml"
+          - name: Clean [LATEST] with Zookeeper on S3 storage
+            kafka_install_version: '${{ inputs.service_branch }}'
+            kafka_template: "templates/kafka-service/kafka_clean_sc_zoo_s3.yml"
+            kafka_service_template: "templates/kafka-service/kafka_clean_sc_zoo_s3.yml"
+            sequence: install
+            zookeeper: true
+            zookeeper_template: "templates/zookeeper-service/zookeeper_install_APP_k8s.yml"
+            storage: s3
     steps:
       # == 01 Start ======= Common pre-steps for all tests =======
       - name: Checkout pipeline
@@ -102,280 +137,120 @@ jobs:
         with:
           ref: '${{ inputs.pipeline_branch }}'
           repository: '${{ github.repository_owner }}/qubership-test-pipelines'
-          
-  # ---------- Current service branch ----------
-  #V Clean [LATEST], Update [LATEST] Diff Params in Kraft mode
-  Clean-Latest-Update-Diff-Params-Kraft:
-    runs-on: ${{ inputs.runner_type }}
-    name: Clean [LATEST], Update [LATEST] Diff Params in Kraft mode
-    steps:
-      - name: Checkout pipeline
-        uses: actions/checkout@v4
-        with:
-          ref: '${{ inputs.pipeline_branch }}'
-          repository: '${{ github.repository_owner }}/qubership-test-pipelines'
           path: 'qubership-test-pipelines'
       - name: Create cluster
         uses: ./qubership-test-pipelines/actions/shared/create_cluster
-      #- name: Install Monitoring
-        #uses: ./qubership-test-pipelines/actions/monitoring/helm_deploy_monitoring
-      - name: Clean Install Kafka [LATEST]
-        uses: ./qubership-test-pipelines/actions/kafka/helm_deploy_kafka
-        with:
-          path_to_template: 'templates/kafka-service/kafka_clean_kraft_mode.yml'
-          service_branch: '${{ inputs.service_branch }}'
-      - name: Verify Kafka installation
-        uses: ./qubership-test-pipelines/actions/kafka/verify_installation_kafka
-      - name: Clean Install Kafka Service [LATEST]
-        uses: ./qubership-test-pipelines/actions/kafka/helm_deploy_kafka_service
-        with:
-          path_to_template: 'templates/kafka-service/kafka_clean_kraft_mode.yml'
-          service_branch: '${{ inputs.service_branch }}'
-      - name: Verify Kafka Service installation
-        uses: ./qubership-test-pipelines/actions/kafka/verify_installation_kafka_service
-      - name: Update Kafka to [LATEST] Version With Diff Params
-        uses: ./qubership-test-pipelines/actions/kafka/helm_deploy_kafka
-        with:
-          path_to_template: 'templates/kafka-service/kafka_update_kraft_mode.yml'
-          service_branch: '${{ inputs.service_branch }}'
-          deploy_mode: upgrade
-      - name: Sleep 1m after update
-        run: sleep 1m
-      - name: Verify Kafka update
-        uses: ./qubership-test-pipelines/actions/kafka/verify_installation_kafka
-      - name: Update Kafka Service to [LATEST] Version With Diff Params
-        uses: ./qubership-test-pipelines/actions/kafka/helm_deploy_kafka_service
-        with:
-          path_to_template: 'templates/kafka-service/kafka_update_kraft_mode.yml'
-          service_branch: '${{ inputs.service_branch }}'
-          deploy_mode: upgrade
-      - name: Sleep 1m after update
-        run: sleep 1m
-      - name: Verify Kafka Service update
-        uses: ./qubership-test-pipelines/actions/kafka/verify_installation_kafka_service
+      # == 01 End ======= Common pre-steps for all tests =======
 
-  # ---------- Current service branch ----------
-  #V Clean [LATEST] with Zookeeper in non-TLS
-  Clean-Latest-Zookeeper-non-TLS:
-    runs-on: ${{inputs.runner_type}}
-    name: Clean [LATEST] with Zookeeper in non-TLS
-    steps:
-      - name: Checkout pipeline
-        uses: actions/checkout@v4
-        with:
-          ref: '${{inputs.pipeline_branch}}'
-          repository: 'Netcracker/qubership-test-pipelines'
-          path: 'qubership-test-pipelines'
-      - name: Create cluster
-        uses: ./qubership-test-pipelines/actions/shared/create_cluster
-        #- name: Install Monitoring
-        #uses: ./qubership-test-pipelines/actions/monitoring/helm_deploy_monitoring
-      - name: Clean Install Zookeeper [LATEST]
-        uses: ./qubership-test-pipelines/actions/zookeeper/helm_deploy_zookeeper
-        with:
-          path_to_template: 'templates/zookeeper-service/zookeeper_install_APP_k8s.yml'
-          service_branch: 'main'
-      - name: Verify Zookeeper installation
-        uses: ./qubership-test-pipelines/actions/zookeeper/verify_installation_zookeeper
-      - name: Clean Install Kafka [LATEST]
-        uses: ./qubership-test-pipelines/actions/kafka/helm_deploy_kafka
-        with:
-          path_to_template: 'templates/kafka-service/kafka_clean_sc_zoo.yml'
-          service_branch: '${{inputs.service_branch}}'
-      - name: Verify Kafka installation
-        uses: ./qubership-test-pipelines/actions/kafka/verify_installation_kafka
-      - name: Clean Install Kafka Service [LATEST]
-        uses: ./qubership-test-pipelines/actions/kafka/helm_deploy_kafka_service
-        with:
-          path_to_template: 'templates/kafka-service/kafka_clean_sc_zoo.yml'
-          service_branch: '${{inputs.service_branch}}'
-      - name: Verify Kafka Service installation
-        uses: ./qubership-test-pipelines/actions/kafka/verify_installation_kafka_service
-
-  #---------- Current service branch ----------
-  #V Clean [LATEST] with Zookeeper in TLS
-  Clean-Latest-Zookeeper-TLS:
-    runs-on: ${{inputs.runner_type}}
-    name: Clean [LATEST] with Zookeeper in TLS
-    steps:
-      - name: Checkout pipeline
-        uses: actions/checkout@v4
-        with:
-          ref: '${{inputs.pipeline_branch}}'
-          repository: 'Netcracker/qubership-test-pipelines'
-          path: 'qubership-test-pipelines'
-      - name: Create cluster
-        uses: ./qubership-test-pipelines/actions/shared/create_cluster
-        #- name: Install Monitoring
-        #uses: ./qubership-test-pipelines/actions/monitoring/helm_deploy_monitoring
-      - name: Install cert-manager
+      # == Start TLS certs addition if needed =======
+      - name: TLS setup
         # language=bash
+        if: matrix.tests.zookeeper == true && matrix.tests.tls == true
         run: |
+          echo "::group::Install cert-manager"
           helm repo add jetstack https://charts.jetstack.io --force-update
           helm upgrade --install cert-manager jetstack/cert-manager --namespace cert-manager \
             --create-namespace --version v1.16.3 --set prometheus.enabled=true   --set crds.enabled=true
-      - name: Create cert-manager entities
-        # language=bash
-        run: |
+          echo "::endgroup::"
+          echo "::group::Create cert-manager entities"
           kubectl apply -f qubership-test-pipelines/resources/test-issuer.yaml
           sleep 10s
           kubectl apply -f qubership-test-pipelines/resources/test-certificate.yaml
           sleep 10s
           kubectl apply -f qubership-test-pipelines/resources/test-clusterissuer.yaml
-      - name: Get cert-manager resources
-        # language=bash
-        run: |
+          echo "::endgroup::"
+          echo "::group::Get cert-manager resources"
           kubectl get pods -n cert-manager
           kubectl get secrets -n cert-manager
           kubectl get certificates -A
-      - name: Get clusterissuer
-        # language=bash
-        run: |
+          echo "::endgroup::"
+          echo "::group:: Get clusterissuer"
           kubectl get clusterissuer
           kubectl get clusterissuer test-clusterissuer -o yaml
-      - name: Clean Install Zookeeper [LATEST] without TLS
-        uses: ./qubership-test-pipelines/actions/zookeeper/helm_deploy_zookeeper
-        with:
-          path_to_template: 'templates/zookeeper-service/zookeeper_install_APP_k8s.yml'
-          service_branch: 'main'
-      - name: Verify Zookeeper installation
-        uses: ./qubership-test-pipelines/actions/zookeeper/verify_installation_zookeeper
-      - name: Clean Install Kafka [LATEST] in TLS
-        uses: ./qubership-test-pipelines/actions/kafka/helm_deploy_kafka
-        with:
-          path_to_template: 'templates/kafka-service/kafka_clean_sc_zoo_tls_false.yml'
-          service_branch: '${{inputs.service_branch}}'
-      - name: Verify Kafka installation
-        uses: ./qubership-test-pipelines/actions/kafka/verify_installation_kafka
-      - name: Get Kafka secrets
-        run: |
-          kubectl get secrets -n kafka
-          kubectl get secret kafka-tls-secret -n kafka -o yaml
-      - name: Clean Install Kafka Service [LATEST] in TLS
-        uses: ./qubership-test-pipelines/actions/kafka/helm_deploy_kafka_service
-        with:
-          path_to_template: 'templates/kafka-service/kafka_clean_sc_zoo_tls_false.yml'
-          service_branch: '${{inputs.service_branch}}'
-      - name: Verify Kafka Service installation
-        uses: ./qubership-test-pipelines/actions/kafka/verify_installation_kafka_service
+          echo "::endgroup::"
+      # == End TLS certs addition if needed =======
 
-  #---------- Current service branch ----------
-  #V Clean [LATEST] with Zookeeper when both are in TLS
-  Clean-Latest-Zookeeper-both-TLS:
-    runs-on: ${{inputs.runner_type}}
-    name: Clean [LATEST] with Zookeeper when both in TLS
-    steps:
-      - name: Checkout pipeline
-        uses: actions/checkout@v4
-        with:
-          ref: '${{inputs.pipeline_branch}}'
-          repository: 'Netcracker/qubership-test-pipelines'
-          path: 'qubership-test-pipelines'
-      - name: Create cluster
-        uses: ./qubership-test-pipelines/actions/shared/create_cluster
-        #- name: Install Monitoring
-        #uses: ./qubership-test-pipelines/actions/monitoring/helm_deploy_monitoring
-      - name: Install cert-manager
-        # language=bash
-        run: |
-          helm repo add jetstack https://charts.jetstack.io --force-update
-          helm upgrade --install cert-manager jetstack/cert-manager --namespace cert-manager \
-            --create-namespace --version v1.16.3 --set prometheus.enabled=true   --set crds.enabled=true
-      - name: Create cert-manager entities
-        # language=bash
-        run: |
-          kubectl apply -f qubership-test-pipelines/resources/test-issuer.yaml
-          sleep 10s
-          kubectl apply -f qubership-test-pipelines/resources/test-certificate.yaml
-          sleep 10s
-          kubectl apply -f qubership-test-pipelines/resources/test-clusterissuer.yaml
-      - name: Get cert-manager resources
-        # language=bash
-        run: |
-          kubectl get pods -n cert-manager
-          kubectl get secrets -n cert-manager
-          kubectl get certificates -A
-      - name: Get clusterissuer
-        # language=bash
-        run: |
-          kubectl get clusterissuer
-          kubectl get clusterissuer test-clusterissuer -o yaml
-      - name: Clean Install Zookeeper [LATEST] in TLS
-        uses: ./qubership-test-pipelines/actions/zookeeper/helm_deploy_zookeeper
-        with:
-          path_to_template: 'templates/zookeeper-service/zookeeper_install_tls_APP_k8s.yml'
-          service_branch: 'main'
-      - name: Verify Zookeeper installation
-        uses: ./qubership-test-pipelines/actions/zookeeper/verify_installation_zookeeper
-      - name: Get Zookeeper secrets
-        run: |
-          kubectl get secrets -n zookeeper
-          kubectl get secret zookeeper-tls-secret -n zookeeper -o yaml
-      - name: Clean Install Kafka [LATEST] in TLS
-        uses: ./qubership-test-pipelines/actions/kafka/helm_deploy_kafka
-        with:
-          path_to_template: 'templates/kafka-service/kafka_clean_sc_zoo_tls.yml'
-          service_branch: '${{inputs.service_branch}}'
-      - name: Verify Kafka installation
-        uses: ./qubership-test-pipelines/actions/kafka/verify_installation_kafka
-      - name: Get Kafka secrets
-        run: |
-          kubectl get secrets -n kafka
-          kubectl get secret kafka-tls-secret -n kafka -o yaml
-      - name: Clean Install Kafka Service [LATEST] in TLS
-        uses: ./qubership-test-pipelines/actions/kafka/helm_deploy_kafka_service
-        with:
-          path_to_template: 'templates/kafka-service/kafka_clean_sc_zoo_tls.yml'
-          service_branch: '${{inputs.service_branch}}'
-      - name: Verify Kafka Service installation
-        uses: ./qubership-test-pipelines/actions/kafka/verify_installation_kafka_service
-
-  #V Clean [LATEST] with Zookeeper on S3
-  Clean-Latest-Zookeeper-S3:
-    runs-on: ${{inputs.runner_type}}
-    name: Clean [LATEST] with Zookeeper on S3 storage
-    steps:
-      - name: Checkout pipeline
-        uses: actions/checkout@v4
-        with:
-          ref: '${{inputs.pipeline_branch}}'
-          repository: 'Netcracker/qubership-test-pipelines'
-          path: 'qubership-test-pipelines'
-      - name: Create cluster
-        uses: ./qubership-test-pipelines/actions/shared/create_cluster
+      # == Start zookeeper installation tests =======
       - name: Clean Install Zookeeper [LATEST]
+        if: matrix.tests.zookeeper == true
         uses: ./qubership-test-pipelines/actions/zookeeper/helm_deploy_zookeeper
         with:
-          path_to_template: 'templates/zookeeper-service/zookeeper_install_APP_k8s.yml'
+          path_to_template: ${{ matrix.tests.zookeeper_template }}
           service_branch: 'main'
       - name: Verify Zookeeper installation
+        if: matrix.tests.zookeeper == true
         uses: ./qubership-test-pipelines/actions/zookeeper/verify_installation_zookeeper
+      # == End zookeeper installation tests =======
+
+      # == Start update YAML secrets if needed =======
       - name: Update YAML secrets
+        if: matrix.tests.zookeeper == true && matrix.tests.storage == 's3'
         # language=bash
         run: |
           python qubership-test-pipelines/python/update_yaml.py \
-            --file='qubership-test-pipelines/templates/kafka-service/kafka_clean_sc_zoo_s3.yml' \
+            --file='qubership-test-pipelines/${{ matrix.tests.kafka_template }}' \
             --path='global/secrets/backupDaemon/s3/keyId' \
             --value='${{secrets.AWS_S3_ACCESS_KEY_ID}}' \
           && python qubership-test-pipelines/python/update_yaml.py \
-            --file='qubership-test-pipelines/templates/kafka-service/kafka_clean_sc_zoo_s3.yml' \
+            --file='qubership-test-pipelines/${{ matrix.tests.kafka_service_template }}' \
             --path='global/secrets/backupDaemon/s3/keySecret' \
             --value='${{secrets.AWS_S3_ACCESS_KEY_SECRET}}'
-      - name: Clean Install Kafka [LATEST] on s3
+      # == End update YAML secrets if needed =======
+
+      # == Start kafka installation tests =======
+      - name: Clean Install Kafka [${{ matrix.tests.kafka_install_version }}]
         uses: ./qubership-test-pipelines/actions/kafka/helm_deploy_kafka
         with:
-          path_to_template: 'templates/kafka-service/kafka_clean_sc_zoo_s3.yml'
-          service_branch: '${{inputs.service_branch}}'
+          path_to_template: ${{ matrix.tests.kafka_template }}
+          service_branch: '${{ matrix.tests.kafka_install_version }}'
       - name: Verify Kafka installation
         uses: ./qubership-test-pipelines/actions/kafka/verify_installation_kafka
-      - name: Clean Install Kafka Service [LATEST] on s3
+      # == End kafka installation tests =======
+
+      - name: Get Kafka secrets
+        if: matrix.tests.zookeeper == true && matrix.tests.tls == true
+        run: |
+          kubectl get secrets -n kafka
+          kubectl get secret kafka-tls-secret -n kafka -o yaml
+
+      # == Start kafka service installation tests =======
+      - name: Clean Install Kafka Service [${{ matrix.tests.kafka_install_version }}]
         uses: ./qubership-test-pipelines/actions/kafka/helm_deploy_kafka_service
         with:
-          path_to_template: 'templates/kafka-service/kafka_clean_sc_zoo_s3.yml'
-          service_branch: '${{inputs.service_branch}}'
+          path_to_template: ${{ matrix.tests.kafka_service_template }}
+          service_branch: '${{ matrix.tests.kafka_install_version }}'
       - name: Verify Kafka Service installation
         uses: ./qubership-test-pipelines/actions/kafka/verify_installation_kafka_service
+      # == End kafka service installation tests =======
 
+      # == Start kafka upgrade tests =======
+      - name: Update Kafka to [${{ matrix.tests.kafka_upgrade_version }} ] Version With Diff Params
+        if: matrix.tests.sequence == 'upgrade'
+        uses: ./qubership-test-pipelines/actions/kafka/helm_deploy_kafka
+        with:
+          path_to_template: ${{ matrix.tests.kafka_upgrade_template }}
+          service_branch: '${{ matrix.tests.kafka_upgrade_version }}'
+          deploy_mode: upgrade
+      - name: Sleep 1m after upgrade
+        if: matrix.tests.sequence == 'upgrade'
+        run: sleep 1m
+      - name: Verify Kafka upgrade
+        if: matrix.tests.sequence == 'upgrade'
+        uses: ./qubership-test-pipelines/actions/kafka/verify_installation_kafka
+      - name: Update Kafka Service to [LATEST] Version With Diff Params
+        if: matrix.tests.sequence == 'upgrade'
+        uses: ./qubership-test-pipelines/actions/kafka/helm_deploy_kafka_service
+        with:
+          path_to_template: 'templates/kafka-service/kafka_upgrade_kraft_mode.yml'
+          service_branch: '${{ inputs.service_branch }}'
+          deploy_mode: upgrade
+      - name: Sleep 1m after upgrade
+        if: matrix.tests.sequence == 'upgrade'
+        run: sleep 1m
+      - name: Verify Kafka Service upgrade
+        if: matrix.tests.sequence == 'upgrade'
+        uses: ./qubership-test-pipelines/actions/kafka/verify_installation_kafka_service
+      # == End kafka upgrade tests =======
 
   #---------- Upgrade from old releases ----------
   #Clean [N1_RELEASE], Upgrade From [N1_RELEASE] To [LATEST_SPRINT]
