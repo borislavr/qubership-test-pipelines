@@ -117,7 +117,7 @@ jobs:
       # == 01 Start ======= Common pre-steps for all tests =======
       - name: Output job parameters
         run: |
-          echo "Test parameters:"
+          echo "ℹ️ Job's parameters:"
           echo "${{ toJson(matrix.tests) }}"
       - name: Checkout pipeline
         uses: actions/checkout@v4
