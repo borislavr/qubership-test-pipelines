@@ -82,6 +82,7 @@ jobs:
     runs-on: ${{ inputs.runner_type }}
     needs: prepare-versions
     strategy:
+      fail-fast: false
       matrix:
         tests:
           - name: Clean [${{ inputs.service_branch }}]. Update [${{ inputs.service_branch }}] Diff Params in Kraft mode
@@ -255,6 +256,7 @@ jobs:
     needs: prepare-versions
     runs-on: ${{inputs.runner_type}}
     strategy:
+      fail-fast: false
       matrix:
         release: ${{fromJson(needs.prepare-versions.outputs.versions)}}
     steps:
