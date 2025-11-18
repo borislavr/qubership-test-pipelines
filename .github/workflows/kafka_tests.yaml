@@ -16,6 +16,7 @@ on:
         description: 'Path to versions list file'
         type: string
         required: true
+        default: '.github/versions.yaml'
       pipeline_branch:
         description: 'Test pipeline branch name'
         type: string
@@ -80,9 +81,8 @@ jobs:
           previous_version=$(echo "$versions_json" | jq -r '.[-1]')
           echo "previous_version=$previous_version" >> $GITHUB_OUTPUT
           export service_branch="${{ inputs.service_branch }}"
-          matrix=$(yq -o=json "." ./${{ inputs.repository_name }}/workflow-config/kafka.yaml | envsubst | jq -c '.jobs')
+          matrix=$(yq -o=json "." ./qubership-kafka/workflow-config/kafka.yaml | envsubst | jq -c '.jobs')
           echo "matrix=${matrix}" >> $GITHUB_OUTPUT
-
 
   matrix-tests:
     runs-on: ${{ inputs.runner_type }}
