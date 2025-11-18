@@ -71,6 +71,12 @@ jobs:
           ref: '${{ inputs.service_branch }}'
           repository: '${{ inputs.repository_name }}'
           path: 'qubership-kafka'
+      - name: Checkout pipeline
+        uses: actions/checkout@v4
+        with:
+          ref: '${{ inputs.pipeline_branch }}'
+          repository: '${{ github.repository_owner }}/qubership-test-pipelines'
+          path: 'qubership-test-pipelines'
       - name: Process versions file
         id: process-versions
         # language=bash
@@ -81,7 +87,7 @@ jobs:
           previous_version=$(echo "$versions_json" | jq -r '.[-1]')
           echo "previous_version=$previous_version" >> $GITHUB_OUTPUT
           export service_branch="${{ inputs.service_branch }}"
-          matrix=$(yq -o=json "." ./qubership-kafka/workflow-config/kafka.yaml | envsubst | jq -c '.jobs')
+          matrix=$(yq -o=json "." ./qubership-test-pipelines/workflow-config/kafka.yaml | envsubst | jq -c '.jobs')
           echo "matrix=${matrix}" >> $GITHUB_OUTPUT
 
   matrix-tests:
@@ -343,15 +349,15 @@ jobs:
   #Clean [N1_RELEASE], Upgrade From [N1_RELEASE] To [LATEST_SPRINT]
   #Clean [N2_RELEASE], Upgrade From [N2_RELEASE] To [LATEST_SPRINT]
   Clean-Previous-Upgrade-To-Latest:
-    name: Clean [${{ needs.prepare-versions.outputs.previous_version }}], Upgrade to [${{ matrix.release }}]
+    name: Clean [${{ needs.prepare.outputs.previous_version }}], Upgrade to [${{ matrix.release }}]
     needs: prepare
     runs-on: ${{inputs.runner_type}}
     strategy:
       fail-fast: false
       matrix:
-        release: ${{ fromJson(needs.prepare-versions.outputs.versions) }}
+        release: ${{ fromJson(needs.prepare.outputs.versions) }}
         exclude:
-         - release: ${{ needs.prepare-versions.outputs.previous_version }}
+         - release: ${{ needs.prepare.outputs.previous_version }}
     env:
       kfk_namespace: kafka
       kfk_max_attempts: 60
