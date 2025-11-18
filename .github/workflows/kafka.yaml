@@ -16,6 +16,7 @@ on:
         description: 'Path to versions list file'
         type: string
         required: true
+        default: '.github/versions.yaml'
       pipeline_branch:
         description: 'Test pipeline branch name'
         type: string
@@ -57,11 +58,12 @@ on:
         required: true
 
 jobs:
-  prepare-versions:
+  prepare:
     runs-on: ${{ inputs.runner_type }}
     outputs:
       versions: ${{ steps.process-versions.outputs.versions }}
       previous_version: ${{ steps.process-versions.outputs.previous_version }}
+      matrix: ${{ steps.process-versions.outputs.matrix }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -69,6 +71,12 @@ jobs:
           ref: '${{ inputs.service_branch }}'
           repository: '${{ inputs.repository_name }}'
           path: 'qubership-kafka'
+      - name: Checkout pipeline
+        uses: actions/checkout@v4
+        with:
+          ref: '${{ inputs.pipeline_branch }}'
+          repository: '${{ github.repository_owner }}/qubership-test-pipelines'
+          path: 'qubership-test-pipelines'
       - name: Process versions file
         id: process-versions
         # language=bash
@@ -78,60 +86,17 @@ jobs:
           echo "versions=$versions_json" >> $GITHUB_OUTPUT
           previous_version=$(echo "$versions_json" | jq -r '.[-1]')
           echo "previous_version=$previous_version" >> $GITHUB_OUTPUT
-
+          export service_branch="${{ inputs.service_branch }}"
+          matrix=$(yq -o=json "." ./qubership-test-pipelines/workflow-config/kafka.yaml | envsubst | jq -c '.jobs')
+          echo "matrix=${matrix}" >> $GITHUB_OUTPUT
 
   matrix-tests:
     runs-on: ${{ inputs.runner_type }}
-    needs: prepare-versions
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
-        tests:
-          - name: Clean [${{ inputs.service_branch }}]. Update [${{ inputs.service_branch }}] Diff Params in Kraft mode
-            kafka_install_version: '${{ inputs.service_branch }}'
-            kafka_template: "templates/kafka-service/kafka_clean_kraft_mode.yml"
-            kafka_service_template: "templates/kafka-service/kafka_clean_kraft_mode.yml"
-            kafka_upgrade_version: '${{ inputs.service_branch }}'
-            kafka_upgrade_template: "templates/kafka-service/kafka_update_kraft_mode.yml"
-            kafka_service_upgrade_template: "templates/kafka-service/kafka_update_kraft_mode.yml"
-            sequence: upgrade
-            zookeeper: false
-            artifact_name: Clean_${{ inputs.service_branch }}_Update_[${{ inputs.service_branch }}]_Diff_Params_in_Kraft_mode
-          - name: Clean [${{ inputs.service_branch }}] with Zookeeper in non-TLS
-            kafka_install_version: '${{ inputs.service_branch }}'
-            kafka_template: "templates/kafka-service/kafka_clean_sc_zoo.yml"
-            kafka_service_template: "templates/kafka-service/kafka_clean_sc_zoo.yml"
-            sequence: install
-            zookeeper: true
-            zookeeper_template: "templates/zookeeper-service/zookeeper_install_APP_k8s.yml"
-            artifact_name: Clean_${{ inputs.service_branch }}_with_Zookeeper_in_non-TLS
-          - name: Clean [${{ inputs.service_branch }}] with Zookeeper in TLS
-            kafka_install_version: '${{ inputs.service_branch }}'
-            kafka_template: "templates/kafka-service/kafka_clean_sc_zoo_tls.yml"
-            kafka_service_template: "templates/kafka-service/kafka_clean_sc_zoo_tls.yml"
-            sequence: install
-            zookeeper: true
-            tls: true
-            zookeeper_template: "templates/zookeeper-service/zookeeper_install_tls_APP_k8s.yml"
-            artifact_name: Clean_${{ inputs.service_branch }}_with_Zookeeper_in_TLS
-          - name: Clean [${{ inputs.service_branch }}] with Zookeeper when both in TLS
-            kafka_install_version: '${{ inputs.service_branch }}'
-            kafka_template: "templates/kafka-service/kafka_clean_sc_zoo_tls.yml"
-            kafka_service_template: "templates/kafka-service/kafka_clean_sc_zoo_tls.yml"
-            sequence: install
-            zookeeper: true
-            tls: true
-            zookeeper_template: "templates/zookeeper-service/zookeeper_install_tls_APP_k8s.yml"
-            artifact_name: Clean_${{ inputs.service_branch }}_with_Zookeeper_when_both_in_TLS
-          - name: Clean [${{ inputs.service_branch }}] with Zookeeper on S3 storage
-            kafka_install_version: '${{ inputs.service_branch }}'
-            kafka_template: "templates/kafka-service/kafka_clean_sc_zoo_s3.yml"
-            kafka_service_template: "templates/kafka-service/kafka_clean_sc_zoo_s3.yml"
-            sequence: install
-            zookeeper: true
-            zookeeper_template: "templates/zookeeper-service/zookeeper_install_APP_k8s.yml"
-            storage: s3
-            artifact_name: Clean_${{ inputs.service_branch }}_with_Zookeeper_on_S3_storage
+        tests: ${{ fromJson(needs.prepare.outputs.matrix) }}
     name: ${{ matrix.tests.name }}
     env:
       kfk_namespace: kafka
@@ -339,15 +304,15 @@ jobs:
   #Clean [N1_RELEASE], Upgrade From [N1_RELEASE] To [LATEST_SPRINT]
   #Clean [N2_RELEASE], Upgrade From [N2_RELEASE] To [LATEST_SPRINT]
   Clean-Previous-Upgrade-To-Latest:
-    name: Clean [${{ needs.prepare-versions.outputs.previous_version }}], Upgrade to [${{ matrix.release }}]
-    needs: prepare-versions
+    name: Clean [${{ needs.prepare.outputs.previous_version }}], Upgrade to [${{ matrix.release }}]
+    needs: prepare
     runs-on: ${{inputs.runner_type}}
     strategy:
       fail-fast: false
       matrix:
-        release: ${{ fromJson(needs.prepare-versions.outputs.versions) }}
+        release: ${{ fromJson(needs.prepare.outputs.versions) }}
         exclude:
-         - release: ${{ needs.prepare-versions.outputs.previous_version }}
+         - release: ${{ needs.prepare.outputs.previous_version }}
     env:
       kfk_namespace: kafka
       kfk_max_attempts: 60
