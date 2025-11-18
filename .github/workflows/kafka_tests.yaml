@@ -258,7 +258,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        release: ${{fromJson(needs.prepare-versions.outputs.versions)}}
+        release: ${{ fromJson(needs.prepare-versions.outputs.versions) }}
+        exclude:
+         - release: ${{ needs.prepare-versions.outputs.previous_version }}
     steps:
       - name: Checkout pipeline
         uses: actions/checkout@v4
