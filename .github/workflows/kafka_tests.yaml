@@ -1,4 +1,4 @@
-name: Kafka Tests
+name: Reusable Kafka Tests
 
 on:
   workflow_dispatch:
@@ -96,6 +96,7 @@ jobs:
             kafka_service_upgrade_template: "templates/kafka-service/kafka_update_kraft_mode.yml"
             sequence: upgrade
             zookeeper: false
+            artifact_name: Clean_${{ inputs.service_branch }}_Update_[${{ inputs.service_branch }}]_Diff_Params_in_Kraft_mode
           - name: Clean [${{ inputs.service_branch }}] with Zookeeper in non-TLS
             kafka_install_version: '${{ inputs.service_branch }}'
             kafka_template: "templates/kafka-service/kafka_clean_sc_zoo.yml"
@@ -103,6 +104,7 @@ jobs:
             sequence: install
             zookeeper: true
             zookeeper_template: "templates/zookeeper-service/zookeeper_install_APP_k8s.yml"
+            artifact_name: Clean_${{ inputs.service_branch }}_with_Zookeeper_in_non-TLS
           - name: Clean [${{ inputs.service_branch }}] with Zookeeper in TLS
             kafka_install_version: '${{ inputs.service_branch }}'
             kafka_template: "templates/kafka-service/kafka_clean_sc_zoo_tls.yml"
@@ -111,6 +113,7 @@ jobs:
             zookeeper: true
             tls: true
             zookeeper_template: "templates/zookeeper-service/zookeeper_install_tls_APP_k8s.yml"
+            artifact_name: Clean_${{ inputs.service_branch }}_with_Zookeeper_in_TLS
           - name: Clean [${{ inputs.service_branch }}] with Zookeeper when both in TLS
             kafka_install_version: '${{ inputs.service_branch }}'
             kafka_template: "templates/kafka-service/kafka_clean_sc_zoo_tls.yml"
@@ -119,6 +122,7 @@ jobs:
             zookeeper: true
             tls: true
             zookeeper_template: "templates/zookeeper-service/zookeeper_install_tls_APP_k8s.yml"
+            artifact_name: Clean_${{ inputs.service_branch }}_with_Zookeeper_when_both_in_TLS
           - name: Clean [${{ inputs.service_branch }}] with Zookeeper on S3 storage
             kafka_install_version: '${{ inputs.service_branch }}'
             kafka_template: "templates/kafka-service/kafka_clean_sc_zoo_s3.yml"
@@ -127,6 +131,7 @@ jobs:
             zookeeper: true
             zookeeper_template: "templates/zookeeper-service/zookeeper_install_APP_k8s.yml"
             storage: s3
+            artifact_name: Clean_${{ inputs.service_branch }}_with_Zookeeper_on_S3_storage
     name: ${{ matrix.tests.name }}
     env:
       kfk_namespace: kafka
@@ -205,6 +210,7 @@ jobs:
           timeout_for_provisioner: '10s'
           cr_kind: 'ZooKeeperService'
           cr_name: 'zookeeper'
+          artifact_name: ${{ matrix.tests.artifact_name }}_ZK_install
       # == End zookeeper installation tests =======
 
       # == Start update YAML secrets if needed =======
@@ -242,6 +248,7 @@ jobs:
           timeout_for_provisioner: ${{ env.kfk_timeout_for_provisioner }}
           cr_kind: ${{ env.kfk_cr_kind }}
           cr_name: ${{ env.kfk_cr_name }}
+          artifact_name: ${{ matrix.tests.artifact_name }}_Kafka_install
       # == End kafka installation tests =======
 
       - name: Get Kafka secrets
@@ -270,6 +277,7 @@ jobs:
           timeout_for_provisioner: ${{ env.kfk_srvc_timeout_for_provisioner }}
           cr_kind: ${{ env.kfk_srvc_cr_kind }}
           cr_name: ${{ env.kfk_srvc_cr_name }}
+          artifact_name: ${{ matrix.tests.artifact_name }}_Kafka_Service_install
       # == End kafka service installation tests =======
 
       # == Start kafka upgrade tests =======
@@ -298,6 +306,7 @@ jobs:
           timeout_for_provisioner: ${{ env.kfk_timeout_for_provisioner }}
           cr_kind: ${{ env.kfk_cr_kind }}
           cr_name: ${{ env.kfk_cr_name }}
+          artifact_name: ${{ matrix.tests.artifact_name }}_Kafka_upgrade
       - name: Update Kafka Service to [LATEST] Version With Diff Params
         if: matrix.tests.sequence == 'upgrade'
         uses: ./qubership-test-pipelines/actions/shared/helm_deploy
@@ -323,6 +332,7 @@ jobs:
           timeout_for_provisioner: ${{ env.kfk_srvc_timeout_for_provisioner }}
           cr_kind: ${{ env.kfk_srvc_cr_kind }}
           cr_name: ${{ env.kfk_srvc_cr_name }}
+          artifact_name: ${{ matrix.tests.artifact_name }}_Kafka_Service_upgrade
       # == End kafka upgrade tests =======
 
   #---------- Upgrade from old releases ----------
