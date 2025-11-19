@@ -1,0 +1,63 @@
+name: S3-TLS
+description: Action to setup cert-manager and create TLS certificates for S3 tests
+inputs:
+  aws-s3-access-key-id:
+    description: 'AWS S3 Access Key ID'
+    required: false
+  aws-s3-access-key-secret:
+    description: 'AWS S3 Access Key Secret'
+    required: false
+  install-cert-manager:
+    description: 'Whether to install cert-manager'
+    required: false
+    default: 'true'
+  yaml-file-path:
+    description: 'Path to YAML file to update with S3 credentials'
+    required: false
+  yaml-secrets-path:
+    description: 'YAML path within the file to update with S3 credentials'
+    required: false
+    default: 'backupDaemon/s3'
+
+runs:
+  using: composite
+  steps:
+    - name: Install cert-manager
+      if: ${{ inputs.install-cert-manager == 'true' }}
+      shell: bash
+      run: |
+        echo "::group::Install cert-manager"
+        helm repo add jetstack https://charts.jetstack.io --force-update
+        helm upgrade --install cert-manager jetstack/cert-manager --namespace cert-manager \
+          --create-namespace --version v1.16.3 --set prometheus.enabled=true   --set crds.enabled=true
+        echo "::endgroup::"
+        echo "::group::Create cert-manager entities"
+        kubectl apply -f qubership-test-pipelines/resources/test-issuer.yaml
+        sleep 10s
+        kubectl apply -f qubership-test-pipelines/resources/test-certificate.yaml
+        sleep 10s
+        kubectl apply -f qubership-test-pipelines/resources/test-clusterissuer.yaml
+        echo "::endgroup::"
+        echo "::group::Get cert-manager resources"
+        kubectl get pods -n cert-manager
+        kubectl get secrets -n cert-manager
+        kubectl get certificates -A
+        echo "::endgroup::"
+        echo "::group::Get clusterissuer"
+        kubectl get clusterissuer
+        kubectl get clusterissuer test-clusterissuer -o yaml
+        echo "::endgroup::"
+
+    - name: Update YAML secrets
+      if: ${{ inputs.yaml-file-path != '' && inputs.aws-s3-access-key-id != '' && inputs.aws-s3-access-key-secret != '' }}
+      shell: bash
+      run: |
+        python qubership-test-pipelines/python/update_yaml.py \
+          --file='${{ inputs.yaml-file-path }}' \
+          --path='${{ inputs.yaml-secrets-path }}/keyId' \
+          --value='${{ inputs.aws-s3-access-key-id }}' \
+        && python qubership-test-pipelines/python/update_yaml.py \
+          --file='${{ inputs.yaml-file-path }}' \
+          --path='${{ inputs.yaml-secrets-path }}/keySecret' \
+          --value='${{ inputs.aws-s3-access-key-secret }}'
+        echo "ℹ️ Updated ${{ inputs.yaml-file-path }} at path ${{ inputs.yaml-secrets-path }} with provided S3 credentials."
