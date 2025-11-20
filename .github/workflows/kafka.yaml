@@ -1,6 +1,7 @@
 name: Reusable Kafka Tests
 
 on:
+  workflow_dispatch: {}
   workflow_call:
     inputs:
       service_branch:
