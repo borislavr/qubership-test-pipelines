@@ -66,6 +66,7 @@ jobs:
     runs-on: ${{ inputs.runner_type }}
     permissions:
       id-token: write
+      contents: 'read'
     outputs:
       versions: ${{ steps.process-versions.outputs.versions }}
       previous_version: ${{ steps.process-versions.outputs.previous_version }}
