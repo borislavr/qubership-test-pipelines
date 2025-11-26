@@ -68,7 +68,22 @@ jobs:
       versions: ${{ steps.process-versions.outputs.versions }}
       previous_version: ${{ steps.process-versions.outputs.previous_version }}
       matrix: ${{ steps.process-versions.outputs.matrix }}
+      pipeline_branch: ${{ steps.get_ref.pipeline_branch }}
     steps:
+      - name: Get workflow ref
+        id: get_ref
+        run: |
+          # Fetch the OIDC token
+          TOKEN=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}" \
+            -d "audience=api://github.com/actions")
+
+          # Decode the JWT token (you might need a tool like 'jq' for this)
+          # This is a simplified example, actual parsing might be more complex
+          WORKFLOW_REF=$(echo "$TOKEN" | jq -r '.payload.job_workflow_ref')
+          echo "Reusable workflow ref: $WORKFLOW_REF"
+          echo "pipeline_branch=$WORKFLOW_REF" >> $GITHUB_OUTPUT
+
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
@@ -79,7 +94,7 @@ jobs:
       - name: Checkout pipeline
         uses: actions/checkout@v5
         with:
-          ref: '${{ inputs.pipeline_branch }}'
+          ref: ${{ steps.get_ref.outputs.pipeline_branch }}
           repository: '${{ github.repository_owner }}/qubership-test-pipelines'
           path: 'qubership-test-pipelines'
 
@@ -109,7 +124,7 @@ jobs:
       - name: Checkout pipeline
         uses: actions/checkout@v5
         with:
-          ref: '${{inputs.pipeline_branch}}'
+          ref: '${{ needs.prepare.outputs.pipeline_branch }}'
           repository: '${{ github.repository_owner }}/qubership-test-pipelines'
           path: 'qubership-test-pipelines'
       - name: Create cluster
@@ -230,7 +245,7 @@ jobs:
       - name: "Checkout pipeline"
         uses: actions/checkout@v4
         with:
-          ref: '${{ inputs.pipeline_branch }}'
+          ref: '${{ needs.prepare.outputs.pipeline_branch }}'
           repository: '${{ github.repository_owner }}/qubership-test-pipelines'
           path: 'qubership-test-pipelines'
       - name: "Create cluster"
