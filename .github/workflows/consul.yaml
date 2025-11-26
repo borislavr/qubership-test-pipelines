@@ -80,6 +80,8 @@ jobs:
             "${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}" \
             -d "audience=api://github.com/actions")
 
+          echo "${TOKEN}"
+
           # Decode the JWT token (you might need a tool like 'jq' for this)
           # This is a simplified example, actual parsing might be more complex
           WORKFLOW_REF=$(echo "$TOKEN" | jq -r '.payload.job_workflow_ref')
