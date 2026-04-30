@@ -90,7 +90,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v5.1.0
         with:
           ref: ${{ inputs.pipeline_branch }}
-          repository: netcracker/qubership-test-pipelines
+          repository: ${{ github.repository_owner }}/qubership-test-pipelines
           path: qubership-test-pipelines
           persist-credentials: false
 
@@ -166,7 +166,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v5.1.0
         with:
           ref: ${{ inputs.pipeline_branch }}
-          repository: netcracker/qubership-test-pipelines
+          repository: ${{ github.repository_owner }}/qubership-test-pipelines
           path: qubership-test-pipelines
           persist-credentials: false
 
@@ -405,7 +405,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v5.1.0
         with:
           ref: ${{ inputs.pipeline_branch }}
-          repository: netcracker/qubership-test-pipelines
+          repository: ${{ github.repository_owner }}/qubership-test-pipelines
           path: qubership-test-pipelines
           persist-credentials: false
       - name: Check job status
