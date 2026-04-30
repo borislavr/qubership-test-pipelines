@@ -355,7 +355,7 @@ jobs:
 
       - name: Hardening Check
         if: inputs.scope == 'hardening'
-        uses: netcracker/qubership-workflow-hub/actions/k8s-hardening-scan@e64a1ee2fc2f68ab44a4ef416c27d83ce36ba8e1 # v2.2.1
+        uses: borislavr/qubership-workflow-hub/actions/k8s-hardening-scan@main
         with:
           namespaces: opensearch
           output-file: opensearch-hardening-scan.json
