@@ -538,7 +538,7 @@ jobs:
 
       - name: Hardening Check
         if: inputs.scope == 'hardening'
-        uses: netcracker/qubership-workflow-hub/actions/k8s-hardening-scan@feature/762-feat-add-possibility-to-skip-individual-checks-for-individual-image
+        uses: netcracker/qubership-workflow-hub/actions/k8s-hardening-scan@main
         with:
           namespaces: ${{ env.kfk_srvc_namespace }}
           output-file: kafka-service-hardening-scan.json
